@@ -1,14 +1,19 @@
 from omega.miner_utils import search_and_embed_videos, ImageBind
+from omega.augment import OpenAIAugment
 from omega.constants import VALIDATOR_TIMEOUT
 from omega.protocol import Videos
 import time
 import requests
 
 imagebind = ImageBind()
+augmenter = OpenAIAugment()
 start = time.time()
 query = "wine and winemaking"
+augmented_query = augmenter.augment_query(query)
+print(f"query: {query}")
+print(f"augmented query: {augmented_query}")
 num_videos = 8
-video_metadata_list = search_and_embed_videos(query, num_videos, imagebind)
+video_metadata_list = search_and_embed_videos(augmented_query, num_videos, imagebind)
 time_elapsed = time.time() - start
 
 if time_elapsed > VALIDATOR_TIMEOUT or len(video_metadata_list) < num_videos:
