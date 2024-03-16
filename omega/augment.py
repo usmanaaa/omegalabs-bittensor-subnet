@@ -6,7 +6,7 @@ from transformers import pipeline
 
 
 def get_llm_prompt(query: str) -> str:
-    return f"Take the given query `{query}` and augment it to be more detailed. Add as many specific and related names, timeframes, types, details, embellishments, richness as possible. Augment the query such that it produces unique results when used to search. Do not make it longer than 12 words."
+    return f"Take the given query `{query}` and augment it to be more detailed. Add as many specific and related names, types, details, embellishments, richness as possible. Augment the query such that it produces unique results when used to search. Do not make it longer than 12 words."
 
 
 class AbstractAugment:
