@@ -67,17 +67,17 @@ By harnessing the power of the Bittensor network and a global community of miner
 
 ### Phase 1: Foundation (Q1 2024)
 - [x] Launch OMEGA Labs subnet on Bittensor testnet
-- [ ] Reach 100,000 hours of footage and 3 million video clips
+- [x] Reach 100,000 hours of footage and 3 million video clips
 
 ### Phase 2: Expansion (Q2 2024)
-- [ ] Reach 500,000 hours of footage and 15 million video clips
-- [ ] Train and demo any-to-any models on the dataset
+- [x] Reach 250,000 hours of footage and 15 million video clips
+- [x] Train and demo any-to-any models on the dataset
 - [ ] Build synthetic data pipelines to enhance dataset quality
 - [ ] Publish a research paper on the Bittensor-powered Ω AGI dataset
 - [ ] Expand into running inference for state-of-the-art any-to-any multimodal models
 
 ### Phase 3: Refinement (Q3 2024)
-- [ ] Reach 1 million+ hours of footage and 30 million+ video clips
+- [ ] Reach 500,000+ hours of footage and 30 million+ video clips
 - [ ] Use the dataset to train powerful unified representation models
 - [ ] Fine-tune any-to-any models for advanced audio-video synchronized generation
 - [ ] Open up an auctioning page for companies and groups to bid on validation topics using various currencies (in addition to TAO)
@@ -119,15 +119,31 @@ pm2 start neurons/miner.py --name omega-miner -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
-    --axon.port {port}
+    --axon.port {port} \
     --blacklist.force_validator_permit
 ```
+
+#### Tips for Better Incentive
+The subnet has become quite competitive, and the basic miner template is no longer sufficient to earn good emissions and avoid deregistration. Here are some tips to consider improving your miner:
+1. Use proxies or frequently change your pod.
+  a) We've heard good things about [Storm Proxies](https://stormproxies.com/).
+2. Make sure your videos are unique. You can de-duplicate your collected video with this [video ID index](https://huggingface.co/datasets/jondurbin/omega-multimodal-ids) graciously offered by Jon, one of the miners on the OMEGA subnet.
+3. Improve the descriptions you are submitting alongside your uploaded videos. You can try doing this by using video captioning models or incorporating the transcript. Lots of experimentation room here.
+4. You can use the `check_score` endpoint that we offer to check your score breakdown. See [this gist](https://gist.github.com/salmanshah1d/f5a8e83cb4af6444ffdef4325a59b489).
+
+#### Common Troubleshooting Tips
+1. If you've been running for several minutes and have not received any requests, make sure your port is open to receiving requests. You can try hitting your IP and port with `curl`. If you get no response, it means your port is not open.
+2. You can use our [validator logs W&B](https://wandb.ai/omega-labs/omega-sn24-validator-logs) to see how your miner is scoring in practice.
 
 ### Running a Validator
 #### Requirements
 - Python 3.8+
 - Pip
-- If running on runpod, `runpod/base:0.5.1-cpu` is a good base template.
+- GPU with at least 24 GB of VRAM
+- If running on runpod, `runpod/pytorch:2.2.1-py3.10-cuda12.1.1-devel-ubuntu22.04` is a good base template.
+
+#### Recommended
+- Setting up wandb. Set environment variable with `export WANDB_API_KEY=<your API key>`. Alternatively, you can disable W&B with --wandb.off
 
 #### Setup
 1. To start, clone the repository and `cd` to it:
@@ -139,13 +155,25 @@ cd omegalabs-bittensor-subnet
 3. Install pm2 if you don't already have it: [pm2.io](https://pm2.io/docs/runtime/guide/installation/).
 4. Next, install the `omega` package: `pip install -e .`
 
-#### Run with PM2
+#### Run auto-updating validator with PM2 (recommended)
+```bash
+pm2 start auto_updating_validator.sh --name omega-validator -- \
+    --netuid {netuid} \
+    --wallet.name {wallet} \
+    --wallet.hotkey {hotkey} \
+    --axon.port {port} \
+    --logging.trace
+```
+Note: you might need to adjust "python" to "python3" within the `neurons/auto_updating_validator.sh` depending on your preferred system python.
+
+#### Run basic validator with PM2
 ```bash
 pm2 start neurons/validator.py --name omega-validator -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
-    --axon.port {port}
+    --axon.port {port} \
+    --logging.trace
 ```
 
 ## Contributing

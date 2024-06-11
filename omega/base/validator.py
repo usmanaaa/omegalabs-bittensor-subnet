@@ -23,7 +23,10 @@ import asyncio
 import argparse
 import os
 import threading
+import datetime as dt
 import bittensor as bt
+from datetime import datetime
+from subprocess import Popen, PIPE
 
 from typing import List
 from traceback import print_exception
@@ -70,6 +73,11 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
+        if self.config.neuron.auto_update:
+            bt.logging.info("Auto update enabled.")
+        else:
+            bt.logging.info("Auto update disabled.")
+
         # Create asyncio event loop to manage async tasks.
         self.loop = asyncio.get_event_loop()
 
@@ -78,6 +86,8 @@ class BaseValidatorNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
+        self.last_update_check = datetime.now()
+        self.update_check_interval = 1800  # 30 minutes
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -110,6 +120,29 @@ class BaseValidatorNeuron(BaseNeuron):
             for _ in range(self.config.neuron.num_concurrent_forwards)
         ]
         await asyncio.gather(*coroutines)
+
+    def is_git_latest(self) -> bool:
+        p = Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE)
+        out, err = p.communicate()
+        if err:
+            return False
+        current_commit = out.decode().strip()
+        p = Popen(['git', 'ls-remote', 'origin', 'HEAD'], stdout=PIPE, stderr=PIPE)
+        out, err = p.communicate()
+        if err:
+            return False
+        latest_commit = out.decode().split()[0]
+        bt.logging.info(f'Current commit: {current_commit}, Latest commit: {latest_commit}')
+        return current_commit == latest_commit
+
+    def should_restart(self) -> bool:
+        # Check if enough time has elapsed since the last update check, if not assume we are up to date.
+        if (datetime.now() - self.last_update_check).seconds < self.update_check_interval:
+            return False
+        
+        self.last_update_check = datetime.now()
+
+        return not self.is_git_latest()
 
     def run(self):
         """
@@ -148,10 +181,33 @@ class BaseValidatorNeuron(BaseNeuron):
                 if self.should_exit:
                     break
 
+                if self.config.neuron.auto_update and self.should_restart():
+                    bt.logging.info(f'Validator is out of date, quitting to restart.')
+                    raise KeyboardInterrupt
+
                 # Sync metagraph and potentially set weights.
                 self.sync()
 
                 self.step += 1
+
+                # Check if we should start a new wandb run.
+                if not self.config.wandb.off:
+                    if (dt.datetime.now() - self.wandb_run_start) >= dt.timedelta(
+                        days=1
+                    ):
+                        bt.logging.info(
+                            "Current wandb run is more than 1 day old. Starting a new run."
+                        )
+                        self.wandb_run.finish()
+                        self.new_wandb_run()
+
+                # Check if we should reload the topics.
+                if (dt.datetime.now() - self.load_topics_start) >= dt.timedelta(
+                    hours=1
+                ):
+                    bt.logging.info("Reloading topics after 1 hour.")
+                    self.all_topics = self.load_topics()
+                    self.load_topics_start = dt.datetime.now()
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -366,7 +422,7 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         # Load the state of the validator from file.
-        state = torch.load(self.config.neuron.full_path + "/state.pt")
+        state = torch.load(self.config.neuron.full_path + "/state.pt", map_location=self.device)
         self.step = state["step"]
         self.scores = state["scores"]
         self.hotkeys = state["hotkeys"]

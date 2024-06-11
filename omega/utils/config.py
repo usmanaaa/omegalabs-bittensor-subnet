@@ -100,6 +100,13 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.decentralization.off",
+        action="store_true",
+        help="Disable decentralization (not recommended).",
+        default=False,
+    )
+
+    parser.add_argument(
         "--wandb.off",
         action="store_true",
         help="Turn off wandb.",
@@ -158,6 +165,13 @@ def add_miner_args(cls, parser):
         help="If set, miners will accept queries from non registered entities. (Dangerous!)",
         default=False,
     )
+    
+    parser.add_argument(
+        "--blacklist.validator_min_stake",
+        help="Minimum stake a validator must have to allow queries",
+        default=10240,
+        type=int,
+    )
 
     parser.add_argument(
         "--wandb.project_name",
@@ -202,7 +216,7 @@ def add_validator_args(cls, parser):
         "--neuron.sample_size",
         type=int,
         help="The number of miners to query in a single step.",
-        default=50,
+        default=10,
     )
 
     parser.add_argument(
@@ -216,7 +230,7 @@ def add_validator_args(cls, parser):
         "--neuron.moving_average_alpha",
         type=float,
         help="Moving average alpha parameter, how much to add of the new observation.",
-        default=0.1,
+        default=0.3,
     )
 
     parser.add_argument(
@@ -244,12 +258,25 @@ def add_validator_args(cls, parser):
     )
 
     parser.add_argument(
-        "--wandb.entity",
-        type=str,
-        help="The name of the project where you are sending the new run.",
-        default="opentensor-dev",
+        "--neuron.auto_update",
+        action="store_true",
+        help="Quits the validator if it is out of date.",
+        default=False,
     )
 
+    parser.add_argument(
+        "--topics_url",
+        type=str,
+        help="URL to fetch topics from.",
+        default="https://docs.google.com/spreadsheets/d/e/2PACX-1vR3jKfd4qkxXt5rTvXTTSsz_RYGkxcxh6-jvB9H0Mljiz-nai7xG-E63qEQ9jQhQabBrIAeJWtgKg5j/pub?gid=0&single=true&output=csv"
+    )
+
+    parser.add_argument(
+        "--topics_path",
+        type=str,
+        help="Path to text file containing a list of random topics to collect data for.",
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "topics.txt")
+    )
 
 def config(cls):
     """
